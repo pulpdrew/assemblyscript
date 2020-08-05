@@ -177,5 +177,7 @@
   "Numeric separators are not allowed here.": 6188,
   "Multiple consecutive numeric separators are not permitted.": 6189,
   "'super' must be called before accessing 'this' in the constructor of a derived class.": 17009,
-  "'super' must be called before accessing a property of 'super' in the constructor of a derived class.": 17011
+  "'super' must be called before accessing a property of 'super' in the constructor of a derived class.": 17011,
+
+  "Template expression must not be empty": 4567
 }

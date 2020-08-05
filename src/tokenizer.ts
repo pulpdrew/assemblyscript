@@ -105,6 +105,7 @@ export enum Token {
 
   OPENBRACE,
   CLOSEBRACE,
+  DOLLAR_OPENBRACE,
   OPENPAREN,
   CLOSEPAREN,
   OPENBRACKET,
@@ -163,6 +164,7 @@ export enum Token {
   STRINGLITERAL,
   INTEGERLITERAL,
   FLOATLITERAL,
+  TEMPLATELITERAL,
 
   // meta
 
@@ -553,10 +555,13 @@ export class Tokenizer extends DiagnosticEmitter {
           return Token.EXCLAMATION;
         }
         case CharCode.DOUBLEQUOTE:
-        case CharCode.SINGLEQUOTE:
-        case CharCode.BACKTICK: { // TODO
+        case CharCode.SINGLEQUOTE: {
           this.pos = pos;
           return Token.STRINGLITERAL; // expects a call to readString
+        }
+        case CharCode.BACKTICK: {
+          this.pos = pos;
+          return Token.TEMPLATELITERAL; // expects a call to readTemplatePart
         }
         case CharCode.PERCENT: {
           ++pos;
@@ -904,6 +909,18 @@ export class Tokenizer extends DiagnosticEmitter {
           this.pos = pos + 1;
           return Token.AT;
         }
+        case CharCode.DOLLAR: {
+          pos++;
+          if (text.charCodeAt(pos) == CharCode.OPENBRACE) {
+            this.pos = pos + 1;
+            return Token.DOLLAR_OPENBRACE;
+          } else {
+            this.error(
+              DiagnosticCode.Invalid_character,
+              this.range(pos, pos + 1)
+            );
+          }
+        }
         default: {
           if (isIdentifierStart(c)) {
             if (isKeywordCharacter(c)) {
@@ -1092,7 +1109,7 @@ export class Tokenizer extends DiagnosticEmitter {
         start = pos;
         continue;
       }
-      if (isLineBreak(c) && quote != CharCode.BACKTICK) {
+      if (isLineBreak(c)) {
         result += text.substring(start, pos);
         this.error(
           DiagnosticCode.Unterminated_string_literal,
@@ -1102,6 +1119,56 @@ export class Tokenizer extends DiagnosticEmitter {
       }
       ++pos;
     }
+    this.pos = pos;
+    return result;
+  }
+
+  readTemplatePart(isTemplateHead: boolean = false): string {
+    var text = this.source.text;
+    var end = this.end;
+    var pos = this.pos;
+    var start = pos;
+    var result = "";
+
+    let c = text.charCodeAt(pos);
+    if (isTemplateHead && c == CharCode.BACKTICK) {
+      pos++;
+      start++;
+    }
+
+    while (true) {
+      if (pos >= end) {
+        result += text.substring(start, pos);
+        this.error(
+          DiagnosticCode.Unterminated_string_literal,
+          this.range(start - 1, end)
+        );
+        break;
+      }
+
+      let c = text.charCodeAt(pos);
+      if (c == CharCode.BACKTICK) {
+        result += text.substring(start, pos++);
+        break;
+      }
+
+      if (c == CharCode.DOLLAR && text.charCodeAt(pos + 1) == CharCode.OPENBRACE) {
+        result += text.substring(start, pos);
+        break;
+      }
+
+      if (c == CharCode.BACKSLASH) {
+        result += text.substring(start, pos);
+        this.pos = pos; // save
+        result += this.readEscapeSequence();
+        pos = this.pos; // restore
+        start = pos;
+        continue;
+      }
+
+      ++pos;
+    }
+
     this.pos = pos;
     return result;
   }

@@ -3805,6 +3805,9 @@ export class Parser extends DiagnosticEmitter {
       case Token.FLOATLITERAL: {
         return Node.createFloatLiteralExpression(tn.readFloat(), tn.range(startPos, tn.pos));
       }
+      case Token.TEMPLATELITERAL: {
+        return this.parseTemplateLiteral(tn);
+      }
       // RegexpLiteralExpression
       // note that this also continues on invalid ones so the surrounding AST remains intact
       case Token.SLASH: {
@@ -3845,6 +3848,39 @@ export class Parser extends DiagnosticEmitter {
         return null;
       }
     }
+  }
+
+  parseTemplateLiteral(tn: Tokenizer): Expression {
+    let templateStart = tn.pos;
+
+    let leadingString = tn.readTemplatePart(true);
+    let expr: Expression | null = leadingString ? Node.createStringLiteralExpression(leadingString, tn.range(templateStart, tn.pos)) : null;
+
+    while (tn.peek() == Token.DOLLAR_OPENBRACE) {
+      tn.next();
+
+      let templateExprStart = tn.pos;
+      let templateExpr = this.parseExpression(tn);
+      if (templateExpr) {
+        templateExpr = Node.createParenthesizedExpression(templateExpr, tn.range(templateExprStart, tn.pos));
+        let toStringAccess = Node.createPropertyAccessExpression(templateExpr, Node.createIdentifierExpression('toString', tn.range(templateExprStart, tn.pos)), tn.range(templateExprStart, tn.pos));
+        let toStringCall = Node.createCallExpression(toStringAccess, null, [], tn.range(templateExprStart, tn.pos));
+        expr = expr ? Node.createBinaryExpression(Token.PLUS, expr, toStringCall, tn.range(templateExprStart, tn.pos)) : toStringCall;
+      } else {
+        this.error(DiagnosticCode.A_break_statement_can_only_be_used_within_an_enclosing_iteration_or_switch_statement, tn.range(templateExprStart, tn.pos)); // TODO fix error message
+      }
+
+      tn.skip(Token.CLOSEBRACE);
+
+      let nextStringPartStart = tn.pos;
+      let nextStringPart = tn.readTemplatePart();
+      if (nextStringPart) {
+        let nextStringExpr = Node.createStringLiteralExpression(nextStringPart, tn.range(templateExprStart, tn.pos))
+        expr = expr ? Node.createBinaryExpression(Token.PLUS, expr, nextStringExpr, tn.range(nextStringPartStart, tn.pos)) : nextStringExpr;
+      }
+    }
+
+    return expr || Node.createStringLiteralExpression('', tn.range(templateStart, tn.pos));
   }
 
   tryParseTypeArgumentsBeforeArguments(

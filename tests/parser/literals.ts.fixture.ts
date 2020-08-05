@@ -60,3 +60,16 @@
 "1\"23";
 "1\"2\\3";
 "\0\n\\n\r";
+"";
+"123";
+"$1";
+"$ {}";
+"} {";
+(foo).toString();
+(foo).toString() + (foo).toString();
+"1" + (foo() + 1).toString();
+(2 - 1).toString() + "2";
+"12" + (3).toString() + "45";
+"${} " + (foo).toString();
+"1" + ("2" + (3).toString()).toString();
+"foo:\n\n" + (foo).toString();
