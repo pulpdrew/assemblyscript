@@ -3867,7 +3867,7 @@ export class Parser extends DiagnosticEmitter {
         let toStringCall = Node.createCallExpression(toStringAccess, null, [], tn.range(templateExprStart, tn.pos));
         expr = expr ? Node.createBinaryExpression(Token.PLUS, expr, toStringCall, tn.range(templateExprStart, tn.pos)) : toStringCall;
       } else {
-        this.error(DiagnosticCode.A_break_statement_can_only_be_used_within_an_enclosing_iteration_or_switch_statement, tn.range(templateExprStart, tn.pos)); // TODO fix error message
+        this.error(DiagnosticCode.Template_expression_must_not_be_empty, tn.range(templateExprStart, tn.pos));
       }
 
       tn.skip(Token.CLOSEBRACE);
